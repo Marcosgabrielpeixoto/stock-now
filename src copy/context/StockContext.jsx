@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 
 const StockContext = createContext(null);
 
@@ -23,47 +23,30 @@ export function StockProvider({ children }) {
   const [movements, setMovements] = useState(initialMovements);
   const [nextProdId, setNextProdId] = useState(6);
   const [nextMovId, setNextMovId] = useState(5);
+  const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    if (darkMode) document.documentElement.classList.add("dark");
+    else document.documentElement.classList.remove("dark");
+  }, [darkMode]);
 
   function login(username, password) {
-    if (username === "admin" && password === "1234") {
-      setUser(username);
-      return true;
-    }
+    if (username === "admin" && password === "1234") { setUser(username); return true; }
     return false;
   }
-
   function logout() { setUser(null); }
-
-  function addProduct(data) {
-    setProducts((prev) => [...prev, { ...data, id: nextProdId }]);
-    setNextProdId((n) => n + 1);
-  }
-
-  function updateProduct(id, data) {
-    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...data } : p)));
-  }
-
-  function deleteProduct(id) {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-  }
-
+  function addProduct(data) { setProducts((prev) => [...prev, { ...data, id: nextProdId }]); setNextProdId((n) => n + 1); }
+  function updateProduct(id, data) { setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...data } : p))); }
+  function deleteProduct(id) { setProducts((prev) => prev.filter((p) => p.id !== id)); }
   function addMovement({ prodId, type, qty, date, note }) {
     const product = products.find((p) => p.id === prodId);
     if (!product) return { error: "Produto não encontrado." };
-    if (type === "saída" && qty > product.qty)
-      return { error: `Quantidade insuficiente. Estoque atual: ${product.qty} ${product.unit}` };
+    if (type === "saída" && qty > product.qty) return { error: `Quantidade insuficiente. Estoque atual: ${product.qty} ${product.unit}` };
     setMovements((prev) => [...prev, { id: nextMovId, prodId, type, qty, date, note }]);
     setNextMovId((n) => n + 1);
-    setProducts((prev) =>
-      prev.map((p) =>
-        p.id === prodId
-          ? { ...p, qty: type === "entrada" ? p.qty + qty : p.qty - qty }
-          : p
-      )
-    );
+    setProducts((prev) => prev.map((p) => p.id === prodId ? { ...p, qty: type === "entrada" ? p.qty + qty : p.qty - qty } : p));
     return { success: true };
   }
-
   function getStatus(product) {
     if (product.qty === 0) return "out";
     if (product.qty <= product.minQty) return "low";
@@ -71,12 +54,10 @@ export function StockProvider({ children }) {
   }
 
   return (
-    <StockContext.Provider value={{ user, login, logout, products, movements, addProduct, updateProduct, deleteProduct, addMovement, getStatus }}>
+    <StockContext.Provider value={{ user, login, logout, products, movements, addProduct, updateProduct, deleteProduct, addMovement, getStatus, darkMode, setDarkMode }}>
       {children}
     </StockContext.Provider>
   );
 }
 
-export function useStock() {
-  return useContext(StockContext);
-}
+export function useStock() { return useContext(StockContext); }
