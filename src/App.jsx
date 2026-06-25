@@ -5,6 +5,7 @@ import Layout from "./components/Layout";
 import Dashboard from "./components/Dashboard";
 import Products from "./components/Products";
 import Movements from "./components/Movements";
+import Help from "./components/Help";
 
 function AppContent() {
   const { user } = useStock();
@@ -16,6 +17,7 @@ function AppContent() {
     dashboard: <Dashboard />,
     products: <Products />,
     movements: <Movements />,
+    help: <Help />,
   };
 
   return (

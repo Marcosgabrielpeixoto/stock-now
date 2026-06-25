@@ -4,12 +4,14 @@ const navItems = [
   { page: "dashboard", icon: "📊", label: "Dashboard" },
   { page: "products", icon: "📦", label: "Produtos" },
   { page: "movements", icon: "🔄", label: "Movimentações" },
+  { page: "help", icon: "❓", label: "Ajuda" },
 ];
 
 const pageTitles = {
   dashboard: "Dashboard",
   products: "Produtos e Insumos",
   movements: "Movimentações",
+  help: "Ajuda",
 };
 
 export default function Layout({ page, setPage, children }) {
