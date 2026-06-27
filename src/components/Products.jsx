@@ -5,10 +5,10 @@ import MovementModal from "./MovementModal";
 
 const CATEGORIES = ["Alimentos", "Bebidas", "Limpeza", "Higiene", "Escritório", "Outros"];
 const UNITS = ["un", "kg", "g", "L", "ml", "cx", "pct", "m"];
-const emptyForm = { name: "", category: "Alimentos", unit: "un", qty: 0, minQty: 0 };
+const emptyForm = { name: "", category: "Alimentos", unit: "un", qty: 0, minQty: 0, expiryDate: "" };
 
 export default function Products() {
-  const { products, addProduct, updateProduct, deleteProduct, getStatus } = useStock();
+  const { products, addProduct, updateProduct, deleteProduct, getStatus, getExpiryStatus, getDaysUntilExpiry } = useStock();
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("");
   const [modal, setModal] = useState(null);
@@ -26,7 +26,7 @@ export default function Products() {
 
   function openNew() { setForm(emptyForm); setEditingId(null); setModal("new"); }
   function openEdit(p) {
-    setForm({ name: p.name, category: p.category, unit: p.unit, qty: p.qty, minQty: p.minQty });
+    setForm({ name: p.name, category: p.category, unit: p.unit, qty: p.qty, minQty: p.minQty, expiryDate: p.expiryDate || "" });
     setEditingId(p.id);
     setModal("edit");
   }
@@ -45,6 +45,22 @@ export default function Products() {
     out: "bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400"
   };
   const statusLabel = { ok: "Normal", low: "Estoque baixo", out: "Sem estoque" };
+
+  function ExpiryBadge({ product }) {
+    const status = getExpiryStatus(product);
+    const days = getDaysUntilExpiry(product);
+    if (!status || status === "valid") return null;
+    if (status === "expired") return (
+      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400">
+        Vencido
+      </span>
+    );
+    return (
+      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-400">
+        Vence em {days}d
+      </span>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -71,7 +87,7 @@ export default function Products() {
               <th className="text-left px-4 py-3 font-medium">Nome</th>
               <th className="text-left px-4 py-3 font-medium">Categoria</th>
               <th className="text-left px-4 py-3 font-medium">Qtd</th>
-              <th className="text-left px-4 py-3 font-medium">Mínimo</th>
+              <th className="text-left px-4 py-3 font-medium">Validade</th>
               <th className="text-left px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3" />
             </tr>
@@ -93,7 +109,14 @@ export default function Products() {
                   </span>
                 </td>
                 <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{p.qty} {p.unit}</td>
-                <td className="px-4 py-2.5 text-gray-400 dark:text-gray-500">{p.minQty} {p.unit}</td>
+                <td className="px-4 py-2.5">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                      {p.expiryDate ? new Date(p.expiryDate).toLocaleDateString("pt-BR") : "—"}
+                    </span>
+                    <ExpiryBadge product={p} />
+                  </div>
+                </td>
                 <td className="px-4 py-2.5">
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusMap[getStatus(p)]}`}>
                     {statusLabel[getStatus(p)]}
@@ -115,7 +138,6 @@ export default function Products() {
         </table>
       </div>
 
-      {/* Modal cadastro/edição */}
       {modal && (
         <Modal title={modal === "edit" ? "Editar produto" : "Novo produto"} onClose={() => setModal(null)}>
           <div className="space-y-4">
@@ -155,6 +177,12 @@ export default function Products() {
                 <label className="block text-xs text-gray-400 dark:text-gray-500 mb-1">Estoque mínimo</label>
                 <input type="number" min={0} value={form.minQty} onChange={(e) => setForm({ ...form, minQty: e.target.value })} className="input" />
               </div>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 dark:text-gray-500 mb-1">
+                Data de validade <span className="text-gray-300 dark:text-gray-600">(opcional)</span>
+              </label>
+              <input type="date" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} className="input" />
             </div>
             <div className="flex gap-2 justify-end pt-1">
               <button onClick={() => setModal(null)} className="btn-cancel">Cancelar</button>

@@ -1,12 +1,17 @@
 import { useStock } from "../context/StockContext";
 
 export default function Dashboard() {
-  const { products, movements, getStatus } = useStock();
+  const { products, movements, getStatus, getExpiryStatus, getDaysUntilExpiry } = useStock();
+
   const total = products.length;
   const ok = products.filter((p) => getStatus(p) === "ok").length;
   const low = products.filter((p) => getStatus(p) === "low").length;
   const out = products.filter((p) => getStatus(p) === "out").length;
-  const alerts = products.filter((p) => getStatus(p) !== "ok");
+  const stockAlerts = products.filter((p) => getStatus(p) !== "ok");
+  const expiryAlerts = products.filter((p) => {
+    const s = getExpiryStatus(p);
+    return s === "expired" || s === "expiring";
+  });
   const recent = [...movements].reverse().slice(0, 5);
 
   return (
@@ -18,19 +23,48 @@ export default function Dashboard() {
         <MetricCard label="Sem estoque" value={out} color="text-red-500" />
       </div>
 
-      {alerts.length > 0 && (
+      {stockAlerts.length > 0 && (
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-5">
           <h2 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-3">⚠️ Alertas de estoque</h2>
           <div className="space-y-2">
-            {alerts.map((p) => {
+            {stockAlerts.map((p) => {
               const isOut = getStatus(p) === "out";
               return (
                 <div key={p.id} className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg ${
-                  isOut ? "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 border border-red-100 dark:border-red-900"
-                        : "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-900"}`}>
+                  isOut
+                    ? "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 border border-red-100 dark:border-red-900"
+                    : "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-900"
+                }`}>
                   <span>{isOut ? "🚫" : "📉"}</span>
                   <span className="flex-1">{p.name}</span>
                   <span className="font-medium">{p.qty} {p.unit} {isOut ? "(zerado)" : `(mín: ${p.minQty})`}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {expiryAlerts.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-5">
+          <h2 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-3">📅 Alertas de validade</h2>
+          <div className="space-y-2">
+            {expiryAlerts.map((p) => {
+              const isExpired = getExpiryStatus(p) === "expired";
+              const days = getDaysUntilExpiry(p);
+              return (
+                <div key={p.id} className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg ${
+                  isExpired
+                    ? "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 border border-red-100 dark:border-red-900"
+                    : "bg-orange-50 dark:bg-orange-950 text-orange-700 dark:text-orange-400 border border-orange-100 dark:border-orange-900"
+                }`}>
+                  <span>{isExpired ? "🗓️" : "⏰"}</span>
+                  <span className="flex-1">{p.name}</span>
+                  <span className="font-medium">
+                    {isExpired
+                      ? `Vencido em ${new Date(p.expiryDate).toLocaleDateString("pt-BR")}`
+                      : `Vence em ${days} dia${days === 1 ? "" : "s"}`}
+                  </span>
                 </div>
               );
             })}
@@ -56,7 +90,11 @@ export default function Dashboard() {
                 <tr key={m.id} className="border-b border-gray-50 dark:border-gray-800 last:border-0">
                   <td className="py-2 text-gray-700 dark:text-gray-300">{p ? p.name : "—"}</td>
                   <td className="py-2">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${m.type === "entrada" ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400" : "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400"}`}>{m.type}</span>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                      m.type === "entrada"
+                        ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400"
+                        : "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400"
+                    }`}>{m.type}</span>
                   </td>
                   <td className="py-2 text-gray-700 dark:text-gray-300">{m.qty} {p ? p.unit : ""}</td>
                   <td className="py-2 text-gray-400 dark:text-gray-500">{m.date}</td>

@@ -7,11 +7,11 @@ function generateCode(id) {
 }
 
 const initialProducts = [
-  { id: 1, code: "PRD-0001", name: "Farinha de trigo", category: "Alimentos", qty: 50, unit: "kg", minQty: 10 },
-  { id: 2, code: "PRD-0002", name: "Detergente", category: "Limpeza", qty: 3, unit: "un", minQty: 5 },
-  { id: 3, code: "PRD-0003", name: "Água mineral", category: "Bebidas", qty: 0, unit: "L", minQty: 12 },
-  { id: 4, code: "PRD-0004", name: "Papel A4", category: "Escritório", qty: 8, unit: "cx", minQty: 2 },
-  { id: 5, code: "PRD-0005", name: "Sabonete", category: "Higiene", qty: 20, unit: "un", minQty: 10 },
+  { id: 1, code: "PRD-0001", name: "Farinha de trigo", category: "Alimentos", qty: 50, unit: "kg", minQty: 10, expiryDate: "2026-12-31" },
+  { id: 2, code: "PRD-0002", name: "Detergente", category: "Limpeza", qty: 3, unit: "un", minQty: 5, expiryDate: "" },
+  { id: 3, code: "PRD-0003", name: "Água mineral", category: "Bebidas", qty: 0, unit: "L", minQty: 12, expiryDate: "2026-07-03" },
+  { id: 4, code: "PRD-0004", name: "Papel A4", category: "Escritório", qty: 8, unit: "cx", minQty: 2, expiryDate: "" },
+  { id: 5, code: "PRD-0005", name: "Sabonete", category: "Higiene", qty: 20, unit: "un", minQty: 10, expiryDate: "2026-06-28" },
 ];
 
 const initialMovements = [
@@ -47,7 +47,6 @@ export function StockProvider({ children }) {
   }
 
   function updateProduct(id, data) {
-    // Mantém o código original ao editar
     setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...data, code: p.code } : p)));
   }
 
@@ -74,12 +73,34 @@ export function StockProvider({ children }) {
     return "ok";
   }
 
+  function getExpiryStatus(product) {
+    if (!product.expiryDate) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expiry = new Date(product.expiryDate);
+    expiry.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) return "expired";
+    if (diffDays <= 7) return "expiring";
+    return "valid";
+  }
+
+  function getDaysUntilExpiry(product) {
+    if (!product.expiryDate) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expiry = new Date(product.expiryDate);
+    expiry.setHours(0, 0, 0, 0);
+    return Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+  }
+
   return (
     <StockContext.Provider value={{
       user, login, logout,
       products, movements,
       addProduct, updateProduct, deleteProduct, addMovement,
-      getStatus, darkMode, setDarkMode
+      getStatus, getExpiryStatus, getDaysUntilExpiry,
+      darkMode, setDarkMode
     }}>
       {children}
     </StockContext.Provider>
