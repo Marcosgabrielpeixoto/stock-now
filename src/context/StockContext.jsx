@@ -1,4 +1,9 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import {
+  collection, onSnapshot, addDoc, updateDoc, deleteDoc,
+  doc, setDoc, query, orderBy
+} from "firebase/firestore";
+import { db } from "../firebase";
 
 const StockContext = createContext(null);
 
@@ -6,91 +11,102 @@ function generateCode(id) {
   return `PRD-${String(id).padStart(4, "0")}`;
 }
 
-const initialProducts = [
-  { id: 1, code: "PRD-0001", name: "Farinha de trigo", category: "Alimentos", qty: 50, unit: "kg", minQty: 10, expiryDate: "2026-12-31" },
-  { id: 2, code: "PRD-0002", name: "Detergente", category: "Limpeza", qty: 3, unit: "un", minQty: 5, expiryDate: "" },
-  { id: 3, code: "PRD-0003", name: "Água mineral", category: "Bebidas", qty: 0, unit: "L", minQty: 12, expiryDate: "2026-07-03" },
-  { id: 4, code: "PRD-0004", name: "Papel A4", category: "Escritório", qty: 8, unit: "cx", minQty: 2, expiryDate: "" },
-  { id: 5, code: "PRD-0005", name: "Sabonete", category: "Higiene", qty: 20, unit: "un", minQty: 10, expiryDate: "2026-06-28" },
-];
-
-const initialMovements = [
-  { id: 1, prodId: 1, type: "entrada", qty: 50, date: "2026-06-10", note: "Compra inicial" },
-  { id: 2, prodId: 2, type: "saída", qty: 2, date: "2026-06-11", note: "Uso operacional" },
-  { id: 3, prodId: 3, type: "entrada", qty: 24, date: "2026-06-11", note: "Entrega fornecedor" },
-  { id: 4, prodId: 3, type: "saída", qty: 24, date: "2026-06-12", note: "Distribuição" },
-];
-
-const initialEmployees = [
-  { id: 1, name: "Admin", cpf: "000.000.000-00", rg: "0000000", birthDate: "1990-01-01", username: "admin", password: "1234", role: "admin" },
-];
+const DEFAULT_ADMIN = {
+  id: "admin",
+  name: "Admin",
+  cpf: "000.000.000-00",
+  rg: "0000000",
+  birthDate: "1990-01-01",
+  username: "admin",
+  password: "1234",
+  role: "admin",
+};
 
 export function StockProvider({ children }) {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
-  const [products, setProducts] = useState(initialProducts);
-  const [movements, setMovements] = useState(initialMovements);
-  const [employees, setEmployees] = useState(initialEmployees);
-  const [nextProdId, setNextProdId] = useState(6);
-  const [nextMovId, setNextMovId] = useState(5);
-  const [nextEmpId, setNextEmpId] = useState(2);
+  const [products, setProducts] = useState([]);
+  const [movements, setMovements] = useState([]);
+  const [employees, setEmployees] = useState([DEFAULT_ADMIN]);
   const [darkMode, setDarkMode] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (darkMode) document.documentElement.classList.add("dark");
     else document.documentElement.classList.remove("dark");
   }, [darkMode]);
 
+  // Escuta produtos em tempo real
+  useEffect(() => {
+    const q = query(collection(db, "products"), orderBy("code"));
+    const unsub = onSnapshot(q, (snap) => {
+      setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setLoading(false);
+    });
+    return unsub;
+  }, []);
+
+  // Escuta movimentações em tempo real
+  useEffect(() => {
+    const q = query(collection(db, "movements"), orderBy("date"));
+    const unsub = onSnapshot(q, (snap) => {
+      setMovements(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+    return unsub;
+  }, []);
+
+  // Escuta funcionários em tempo real
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "employees"), (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setEmployees([DEFAULT_ADMIN, ...list]);
+    });
+    return unsub;
+  }, []);
+
   function login(username, password) {
     const emp = employees.find((e) => e.username === username && e.password === password);
-    if (emp) {
-      setUser(emp.name);
-      setUserRole(emp.role);
-      return true;
-    }
+    if (emp) { setUser(emp.name); setUserRole(emp.role); return true; }
     return false;
   }
 
   function logout() { setUser(null); setUserRole(null); }
 
-  function addProduct(data) {
-    const code = generateCode(nextProdId);
-    setProducts((prev) => [...prev, { ...data, id: nextProdId, code }]);
-    setNextProdId((n) => n + 1);
+  async function addProduct(data) {
+    const nextCode = `PRD-${String(products.length + 1).padStart(4, "0")}`;
+    await addDoc(collection(db, "products"), { ...data, code: nextCode });
   }
 
-  function updateProduct(id, data) {
-    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...data, code: p.code } : p)));
+  async function updateProduct(id, data) {
+    await updateDoc(doc(db, "products", id), data);
   }
 
-  function deleteProduct(id) {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+  async function deleteProduct(id) {
+    await deleteDoc(doc(db, "products", id));
   }
 
-  function addMovement({ prodId, type, qty, date, note }) {
+  async function addMovement({ prodId, type, qty, date, note }) {
     const product = products.find((p) => p.id === prodId);
     if (!product) return { error: "Produto não encontrado." };
     if (type === "saída" && qty > product.qty)
       return { error: `Quantidade insuficiente. Estoque atual: ${product.qty} ${product.unit}` };
-    setMovements((prev) => [...prev, { id: nextMovId, prodId, type, qty, date, note }]);
-    setNextMovId((n) => n + 1);
-    setProducts((prev) => prev.map((p) =>
-      p.id === prodId ? { ...p, qty: type === "entrada" ? p.qty + qty : p.qty - qty } : p
-    ));
+    await addDoc(collection(db, "movements"), { prodId, type, qty, date, note });
+    await updateDoc(doc(db, "products", prodId), {
+      qty: type === "entrada" ? product.qty + qty : product.qty - qty,
+    });
     return { success: true };
   }
 
-  function addEmployee(data) {
-    // Verifica se username já existe
-    if (employees.find((e) => e.username === data.username))
+  async function addEmployee(data) {
+    const all = [...employees];
+    if (all.find((e) => e.username === data.username))
       return { error: "Este nome de usuário já existe." };
-    setEmployees((prev) => [...prev, { ...data, id: nextEmpId, role: "employee" }]);
-    setNextEmpId((n) => n + 1);
+    await addDoc(collection(db, "employees"), { ...data, role: "employee" });
     return { success: true };
   }
 
-  function deleteEmployee(id) {
-    setEmployees((prev) => prev.filter((e) => e.id !== id));
+  async function deleteEmployee(id) {
+    await deleteDoc(doc(db, "employees", id));
   }
 
   function getStatus(product) {
@@ -101,28 +117,24 @@ export function StockProvider({ children }) {
 
   function getExpiryStatus(product) {
     if (!product.expiryDate) return null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const expiry = new Date(product.expiryDate);
-    expiry.setHours(0, 0, 0, 0);
-    const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
-    if (diffDays < 0) return "expired";
-    if (diffDays <= 7) return "expiring";
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const expiry = new Date(product.expiryDate); expiry.setHours(0, 0, 0, 0);
+    const diff = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+    if (diff < 0) return "expired";
+    if (diff <= 7) return "expiring";
     return "valid";
   }
 
   function getDaysUntilExpiry(product) {
     if (!product.expiryDate) return null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const expiry = new Date(product.expiryDate);
-    expiry.setHours(0, 0, 0, 0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const expiry = new Date(product.expiryDate); expiry.setHours(0, 0, 0, 0);
     return Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
   }
 
   return (
     <StockContext.Provider value={{
-      user, userRole, login, logout,
+      user, userRole, login, logout, loading,
       products, movements, employees,
       addProduct, updateProduct, deleteProduct,
       addMovement, addEmployee, deleteEmployee,

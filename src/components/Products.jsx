@@ -15,11 +15,12 @@ export default function Products() {
   const [movProdId, setMovProdId] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const filtered = products.filter((p) => {
     const s = search.toLowerCase();
     return (
-      (!s || p.name.toLowerCase().includes(s) || p.category.toLowerCase().includes(s) || p.code.toLowerCase().includes(s)) &&
+      (!s || p.name.toLowerCase().includes(s) || p.category.toLowerCase().includes(s) || p.code?.toLowerCase().includes(s)) &&
       (!filterCat || p.category === filterCat)
     );
   });
@@ -30,14 +31,20 @@ export default function Products() {
     setEditingId(p.id);
     setModal("edit");
   }
-  function handleSave() {
+
+  async function handleSave() {
     if (!form.name.trim()) return alert("Informe o nome do produto.");
+    setSaving(true);
     const data = { ...form, qty: Number(form.qty), minQty: Number(form.minQty) };
-    if (modal === "edit") updateProduct(editingId, data);
-    else addProduct(data);
+    if (modal === "edit") await updateProduct(editingId, data);
+    else await addProduct(data);
+    setSaving(false);
     setModal(null);
   }
-  function handleDelete(id) { if (window.confirm("Excluir este produto?")) deleteProduct(id); }
+
+  async function handleDelete(id) {
+    if (window.confirm("Excluir este produto?")) await deleteProduct(id);
+  }
 
   const statusMap = {
     ok: "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400",
@@ -50,16 +57,8 @@ export default function Products() {
     const status = getExpiryStatus(product);
     const days = getDaysUntilExpiry(product);
     if (!status || status === "valid") return null;
-    if (status === "expired") return (
-      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400">
-        Vencido
-      </span>
-    );
-    return (
-      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-400">
-        Vence em {days}d
-      </span>
-    );
+    if (status === "expired") return <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400">Vencido</span>;
+    return <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-400">Vence em {days}d</span>;
   }
 
   return (
@@ -73,8 +72,7 @@ export default function Products() {
           <option value="">Todas categorias</option>
           {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
         </select>
-        <button onClick={openNew}
-          className="ml-auto bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+        <button onClick={openNew} className="ml-auto bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
           + Novo produto
         </button>
       </div>
@@ -97,39 +95,22 @@ export default function Products() {
               <tr><td colSpan={7} className="text-center py-10 text-gray-400 dark:text-gray-500">Nenhum produto encontrado</td></tr>
             ) : filtered.map((p) => (
               <tr key={p.id} className="border-b border-gray-50 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800">
-                <td className="px-4 py-2.5">
-                  <span className="font-mono text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded">
-                    {p.code}
-                  </span>
-                </td>
+                <td className="px-4 py-2.5"><span className="font-mono text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded">{p.code}</span></td>
                 <td className="px-4 py-2.5 font-medium text-gray-800 dark:text-gray-100">{p.name}</td>
-                <td className="px-4 py-2.5">
-                  <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">
-                    {p.category}
-                  </span>
-                </td>
+                <td className="px-4 py-2.5"><span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">{p.category}</span></td>
                 <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{p.qty} {p.unit}</td>
                 <td className="px-4 py-2.5">
                   <div className="flex flex-col gap-1">
-                    <span className="text-xs text-gray-400 dark:text-gray-500">
-                      {p.expiryDate ? new Date(p.expiryDate).toLocaleDateString("pt-BR") : "—"}
-                    </span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">{p.expiryDate ? new Date(p.expiryDate).toLocaleDateString("pt-BR") : "—"}</span>
                     <ExpiryBadge product={p} />
                   </div>
                 </td>
-                <td className="px-4 py-2.5">
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusMap[getStatus(p)]}`}>
-                    {statusLabel[getStatus(p)]}
-                  </span>
-                </td>
+                <td className="px-4 py-2.5"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusMap[getStatus(p)]}`}>{statusLabel[getStatus(p)]}</span></td>
                 <td className="px-4 py-2.5">
                   <div className="flex items-center gap-1 justify-end">
-                    <button onClick={() => setMovProdId(p.id)} title="Movimentar"
-                      className="text-xs px-2 py-1 rounded-md border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400">🔄</button>
-                    <button onClick={() => openEdit(p)} title="Editar"
-                      className="text-xs px-2 py-1 rounded-md border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400">✏️</button>
-                    <button onClick={() => handleDelete(p.id)} title="Excluir"
-                      className="text-xs px-2 py-1 rounded-md border border-red-100 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950 text-red-500 dark:text-red-400">🗑️</button>
+                    <button onClick={() => setMovProdId(p.id)} className="text-xs px-2 py-1 rounded-md border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400">🔄</button>
+                    <button onClick={() => openEdit(p)} className="text-xs px-2 py-1 rounded-md border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400">✏️</button>
+                    <button onClick={() => handleDelete(p.id)} className="text-xs px-2 py-1 rounded-md border border-red-100 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950 text-red-500 dark:text-red-400">🗑️</button>
                   </div>
                 </td>
               </tr>
@@ -179,19 +160,18 @@ export default function Products() {
               </div>
             </div>
             <div>
-              <label className="block text-xs text-gray-400 dark:text-gray-500 mb-1">
-                Data de validade <span className="text-gray-300 dark:text-gray-600">(opcional)</span>
-              </label>
+              <label className="block text-xs text-gray-400 dark:text-gray-500 mb-1">Data de validade <span className="text-gray-300 dark:text-gray-600">(opcional)</span></label>
               <input type="date" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} className="input" />
             </div>
             <div className="flex gap-2 justify-end pt-1">
               <button onClick={() => setModal(null)} className="btn-cancel">Cancelar</button>
-              <button onClick={handleSave} className="btn-save">Salvar</button>
+              <button onClick={handleSave} disabled={saving} className="btn-save disabled:opacity-50">
+                {saving ? "Salvando..." : "Salvar"}
+              </button>
             </div>
           </div>
         </Modal>
       )}
-
       {movProdId && <MovementModal initialProdId={movProdId} onClose={() => setMovProdId(null)} />}
     </div>
   );

@@ -9,8 +9,17 @@ import Employees from "./components/Employees";
 import Help from "./components/Help";
 
 function AppContent() {
-  const { user, userRole } = useStock();
+  const { user, userRole, loading } = useStock();
   const [page, setPage] = useState("dashboard");
+
+  if (loading && !user) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="text-center space-y-3">
+        <div className="text-3xl animate-pulse">📦</div>
+        <p className="text-sm text-gray-400 dark:text-gray-500">Carregando Stock Now...</p>
+      </div>
+    </div>
+  );
 
   if (!user) return <Login />;
 
