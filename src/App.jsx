@@ -5,10 +5,11 @@ import Layout from "./components/Layout";
 import Dashboard from "./components/Dashboard";
 import Products from "./components/Products";
 import Movements from "./components/Movements";
+import Employees from "./components/Employees";
 import Help from "./components/Help";
 
 function AppContent() {
-  const { user } = useStock();
+  const { user, userRole } = useStock();
   const [page, setPage] = useState("dashboard");
 
   if (!user) return <Login />;
@@ -17,6 +18,7 @@ function AppContent() {
     dashboard: <Dashboard />,
     products: <Products />,
     movements: <Movements />,
+    employees: userRole === "admin" ? <Employees /> : <Dashboard />,
     help: <Help />,
   };
 

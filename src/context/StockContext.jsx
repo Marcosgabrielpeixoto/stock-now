@@ -21,12 +21,19 @@ const initialMovements = [
   { id: 4, prodId: 3, type: "saída", qty: 24, date: "2026-06-12", note: "Distribuição" },
 ];
 
+const initialEmployees = [
+  { id: 1, name: "Admin", cpf: "000.000.000-00", rg: "0000000", birthDate: "1990-01-01", username: "admin", password: "1234", role: "admin" },
+];
+
 export function StockProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [products, setProducts] = useState(initialProducts);
   const [movements, setMovements] = useState(initialMovements);
+  const [employees, setEmployees] = useState(initialEmployees);
   const [nextProdId, setNextProdId] = useState(6);
   const [nextMovId, setNextMovId] = useState(5);
+  const [nextEmpId, setNextEmpId] = useState(2);
   const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
@@ -35,10 +42,16 @@ export function StockProvider({ children }) {
   }, [darkMode]);
 
   function login(username, password) {
-    if (username === "admin" && password === "1234") { setUser(username); return true; }
+    const emp = employees.find((e) => e.username === username && e.password === password);
+    if (emp) {
+      setUser(emp.name);
+      setUserRole(emp.role);
+      return true;
+    }
     return false;
   }
-  function logout() { setUser(null); }
+
+  function logout() { setUser(null); setUserRole(null); }
 
   function addProduct(data) {
     const code = generateCode(nextProdId);
@@ -65,6 +78,19 @@ export function StockProvider({ children }) {
       p.id === prodId ? { ...p, qty: type === "entrada" ? p.qty + qty : p.qty - qty } : p
     ));
     return { success: true };
+  }
+
+  function addEmployee(data) {
+    // Verifica se username já existe
+    if (employees.find((e) => e.username === data.username))
+      return { error: "Este nome de usuário já existe." };
+    setEmployees((prev) => [...prev, { ...data, id: nextEmpId, role: "employee" }]);
+    setNextEmpId((n) => n + 1);
+    return { success: true };
+  }
+
+  function deleteEmployee(id) {
+    setEmployees((prev) => prev.filter((e) => e.id !== id));
   }
 
   function getStatus(product) {
@@ -96,9 +122,10 @@ export function StockProvider({ children }) {
 
   return (
     <StockContext.Provider value={{
-      user, login, logout,
-      products, movements,
-      addProduct, updateProduct, deleteProduct, addMovement,
+      user, userRole, login, logout,
+      products, movements, employees,
+      addProduct, updateProduct, deleteProduct,
+      addMovement, addEmployee, deleteEmployee,
       getStatus, getExpiryStatus, getDaysUntilExpiry,
       darkMode, setDarkMode
     }}>

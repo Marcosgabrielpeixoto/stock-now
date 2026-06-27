@@ -1,6 +1,14 @@
 import { useStock } from "../context/StockContext";
 
-const navItems = [
+const adminNavItems = [
+  { page: "dashboard", icon: "📊", label: "Dashboard" },
+  { page: "products", icon: "📦", label: "Produtos" },
+  { page: "movements", icon: "🔄", label: "Movimentações" },
+  { page: "employees", icon: "👥", label: "Funcionários" },
+  { page: "help", icon: "❓", label: "Ajuda" },
+];
+
+const employeeNavItems = [
   { page: "dashboard", icon: "📊", label: "Dashboard" },
   { page: "products", icon: "📦", label: "Produtos" },
   { page: "movements", icon: "🔄", label: "Movimentações" },
@@ -11,11 +19,13 @@ const pageTitles = {
   dashboard: "Dashboard",
   products: "Produtos e Insumos",
   movements: "Movimentações",
+  employees: "Funcionários",
   help: "Ajuda",
 };
 
 export default function Layout({ page, setPage, children }) {
-  const { user, logout, darkMode, setDarkMode } = useStock();
+  const { user, userRole, logout, darkMode, setDarkMode } = useStock();
+  const navItems = userRole === "admin" ? adminNavItems : employeeNavItems;
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -49,6 +59,11 @@ export default function Layout({ page, setPage, children }) {
         <header className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-6 flex items-center justify-between h-12">
           <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{pageTitles[page]}</span>
           <div className="flex items-center gap-3">
+            {userRole === "admin" && (
+              <span className="text-xs bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full">
+                Admin
+              </span>
+            )}
             <button onClick={() => setDarkMode(!darkMode)}
               className="text-lg p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               title={darkMode ? "Modo claro" : "Modo escuro"}>
