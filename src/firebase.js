@@ -1,3 +1,5 @@
+//Importando funções do Firebase
+
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
