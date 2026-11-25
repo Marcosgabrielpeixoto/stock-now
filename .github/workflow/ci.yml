@@ -1,0 +1,36 @@
+name: CI Stock Now
+
+on:
+  pull_request:
+    branches:
+      - main
+      - release
+      - development
+      - 'features/*'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Baixa o código do repositório
+      - name: Checkout código
+        uses: actions/checkout@v6
+
+      # Configura Node.js
+      - name: Configura Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      # Instala dependências
+      - name: Instala dependências
+        run: npm install
+
+      # Roda os testes automatizados (Vitest)
+      - name: Executa testes
+        run: npm test
+
+      # Verifica se o projeto compila sem erros
+      - name: Executa build
+        run: npm run build
